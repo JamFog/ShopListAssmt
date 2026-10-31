@@ -27,6 +27,13 @@ android {
         viewBinding = true
     }
 
+    testOptions {
+        unitTests {
+            // Robolectric needs merged resources/layouts to inflate the real UI
+            isIncludeAndroidResources = true
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
@@ -60,4 +67,10 @@ dependencies {
     implementation("org.apache.poi:poi-ooxml:5.2.3")
     implementation(libs.androidx.ui.graphics.android)
     implementation(libs.androidx.foundation.android)
+
+    // JVM tests (run with ./gradlew testDebugUnitTest, no emulator needed)
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation("androidx.test.ext:junit:1.2.1")
 }
