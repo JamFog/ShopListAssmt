@@ -37,6 +37,10 @@ class PlanCategoriesFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         lateinit var adapter: ItemAdapter
+        // True from a reorder until the RecyclerView shows the new order. ListAdapter applies
+        // lists asynchronously, so until then the adapter positions ItemTouchHelper passes to
+        // onMove are stale; acting on them would reorder the ViewModel a second time.
+        var moveInFlight = false
         val dragHelper = ItemTouchHelper(object : ItemTouchHelper.SimpleCallback(
             ItemTouchHelper.UP or ItemTouchHelper.DOWN, 0
         ) {
@@ -45,13 +49,17 @@ class PlanCategoriesFragment : Fragment() {
                 viewHolder: RecyclerView.ViewHolder,
                 target: RecyclerView.ViewHolder
             ): Boolean {
-                val from = viewHolder.adapterPosition
-                val to = target.adapterPosition
+                if (moveInFlight) return false // ItemTouchHelper retries on the next MOVE event
+                val from = viewHolder.bindingAdapterPosition
+                val to = target.bindingAdapterPosition
                 val itemFrom = adapter.currentList.getOrNull(from)
                 val itemTo = adapter.currentList.getOrNull(to)
-                if (itemFrom?.isPlaceholder == true || itemTo?.isPlaceholder == true) return false
+                if (itemFrom == null || itemTo == null) return false
+                if (itemFrom.isPlaceholder || itemTo.isPlaceholder) return false
+                // The ViewModel is the single source of truth: the list shown here and the
+                // category pages are both rebuilt from it by the observer below.
+                moveInFlight = true
                 viewModel.reorderCategory(from - 1, to - 1)
-                adapter.moveItem(from, to)
                 return true
             }
 
@@ -120,7 +128,7 @@ class PlanCategoriesFragment : Fragment() {
                 items.add(ShoppingItem(cat.id, cat.heading, isHeading = true))
             }
             items.add(ShoppingItem(-2, "", isPlaceholder = true))
-            adapter.submitList(items)
+            adapter.submitList(items) { moveInFlight = false }
         }
     }
 
